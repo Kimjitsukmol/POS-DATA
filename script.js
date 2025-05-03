@@ -773,10 +773,9 @@ document.getElementById("editProductBtn").addEventListener("click", () => {
 
 function saveSalesToFirestore(salesItems, total, cashReceived, change) {
   const db = firebase.firestore();
-  const timestamp = new Date();
 
   const saleRecord = {
-    timestamp: firebase.firestore.Timestamp.fromDate(timestamp),
+    timestamp: firebase.firestore.FieldValue.serverTimestamp(), // ✅ ใช้เวลาเซิร์ฟเวอร์
     items: salesItems,
     total: total,
     cashReceived: cashReceived,
@@ -785,12 +784,13 @@ function saveSalesToFirestore(salesItems, total, cashReceived, change) {
 
   db.collection("sales").add(saleRecord)
     .then((docRef) => {
-      console.log("บันทึกยอดขายแล้ว:", docRef.id);
+      console.log("✅ บันทึกยอดขายแล้ว:", docRef.id);
     })
     .catch((error) => {
-      console.error("เกิดข้อผิดพลาดในการบันทึก:", error);
+      console.error("❌ เกิดข้อผิดพลาดในการบันทึก:", error);
     });
 }
+
 
 document.getElementById("cashInput").addEventListener("keydown", function (event) {
   if (event.key === "Enter") {
