@@ -343,9 +343,10 @@ function clearAll() {
 
 function saveToLocalSummary() {
   const now = new Date();
-  const dateKey = now.toLocaleDateString("th-TH"); // ex. "2/5/2567"
-  let summary = JSON.parse(localStorage.getItem("posSummary")) || {};
+  const dateKey = now.toLocaleDateString("th-TH"); // เช่น "3/5/2568"
 
+  // ✅ เก็บใน localStorage เหมือนเดิม
+  let summary = JSON.parse(localStorage.getItem("posSummary")) || {};
   summary = cleanupOldSummary(summary);
 
   if (summary[dateKey]) {
@@ -357,13 +358,30 @@ function saveToLocalSummary() {
 
   localStorage.setItem("posSummary", JSON.stringify(summary));
 
-  // ✅ ✅ ✅ เพิ่มบันทึกขึ้น Firestore ตรงนี้:
-  salesDB.collection("salesSummary").doc(dateKey).set({
-    price: summary[dateKey].price,
-    qty: summary[dateKey].qty,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  // ✅ บันทึกยอด "เฉพาะรอบนี้" ลง Firebase (ไม่ใช่ยอดรวมของ localStorage)
+  const docRef = salesDB.collection("salesSummary").doc(dateKey);
+
+  docRef.get().then(docSnap => {
+    let oldPrice = 0;
+    let oldQty = 0;
+
+    if (docSnap.exists) {
+      const data = docSnap.data();
+      oldPrice = data.price || 0;
+      oldQty = data.qty || 0;
+    }
+
+    docRef.set({
+      price: oldPrice + totalPrice, // ✅ บวกเฉพาะยอดรอบนี้
+      qty: oldQty + totalQty,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  }).catch(error => {
+    console.error("❌ เกิดข้อผิดพลาดในการบันทึกยอดรวม:", error);
   });
 }
+
+
 
 window.addEventListener("load", () => {
   showTodaySummary(); // ✅ ใช้ Firebase จริง
