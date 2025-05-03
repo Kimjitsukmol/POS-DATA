@@ -184,11 +184,15 @@ document.getElementById("received").addEventListener("keydown", function (e) {
 
 
 
-document.getElementById("showTodayBtn").addEventListener("click", () => {
+document.getElementById("showTodayBtn").addEventListener("click", async () => {
+  await showTodaySummary(); // ดึงข้อมูลจาก Firestore
   const box = document.getElementById("todaySummaryBox");
   box.style.display = "block";
-  setTimeout(() => box.style.display = "none", 10000);
+  setTimeout(() => {
+    box.style.display = "none";
+  }, 10000); // แสดง 10 วินาที
 });
+
 
 window.addEventListener("keydown", function (e) {
   if (e.code === "NumpadDecimal") {
@@ -870,13 +874,16 @@ async function showTodaySummary() {
     const totalSales = todaySales.reduce((sum, sale) => sum + sale.total, 0);
     const itemCount = todaySales.reduce((count, sale) => count + sale.items.length, 0);
 
-    alert(`📅 ยอดขายวันนี้ (${formatDateThai(today)}):\n\nจำนวนรายการ: ${itemCount} รายการ\nยอดขายรวม: ${totalSales.toLocaleString()} บาท`);
+    // 👉 แสดงผลในหน้าเว็บแทน alert
+    const todayTotal = document.getElementById("todayTotal");
+    todayTotal.textContent = `ขายได้ ${itemCount} ชิ้น รวมยอด ฿${totalSales.toLocaleString()}`;
 
   } catch (error) {
     console.error("เกิดข้อผิดพลาดในการดึงยอดขายวันนี้:", error);
-    alert("ไม่สามารถดึงยอดขายวันนี้ได้");
+    document.getElementById("todayTotal").textContent = "ไม่สามารถดึงยอดวันนี้ได้";
   }
 }
+
 
 async function showSummary(days) {
   const db = firebase.firestore();
