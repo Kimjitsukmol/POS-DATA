@@ -885,3 +885,36 @@ async function showSummary(days) {
   }
 }
 
+function saveToSalesSummary(totalPrice, totalQty) {
+  const now = new Date();
+  const day = now.getDate();
+  const month = now.getMonth() + 1;
+  const year = now.getFullYear() + 543;
+
+  const docRef = salesDB
+    .collection("salesSummary")
+    .doc(String(day))
+    .collection(String(month))
+    .doc(String(year));
+
+  docRef.get().then(docSnap => {
+    let oldPrice = 0;
+    let oldQty = 0;
+
+    if (docSnap.exists) {
+      const data = docSnap.data();
+      oldPrice = data.price || 0;
+      oldQty = data.qty || 0;
+    }
+
+    docRef.set({
+      price: oldPrice + totalPrice,
+      qty: oldQty + totalQty,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    console.log("✅ บันทึกยอดรวมสำเร็จ");
+  }).catch(error => {
+    console.error("❌ เกิดข้อผิดพลาดในการบันทึกยอดรวม:", error);
+  });
+}
