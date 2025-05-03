@@ -24,6 +24,19 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 window.firebaseDB = db; // เผื่อใช้งานส่วนอื่น
 
+// ✅ Project B – ยอดขาย
+const salesFirebaseConfig = {
+  apiKey: "AIzaSyA9Ru8KfM7W4K-bA947wuR8Z2nfInac5IE",
+  authDomain: "pos-sales-data-3b435.firebaseapp.com",
+  projectId: "pos-sales-data-3b435",
+  storageBucket: "pos-sales-data-3b435.firebasestorage.app",
+  messagingSenderId: "1038822270145",
+  appId: "1:1038822270145:web:ce02aa0c2f294f6acc6040"
+};
+
+const salesApp = firebase.initializeApp(salesFirebaseConfig, "salesApp");
+const salesDB = salesApp.firestore();
+
 
 let productListReady = false;
 
@@ -345,14 +358,16 @@ function saveToLocalSummary() {
   localStorage.setItem("posSummary", JSON.stringify(summary));
 
   // ✅ ✅ ✅ เพิ่มบันทึกขึ้น Firestore ตรงนี้:
-  firebaseDB.collection("salesSummary").doc(dateKey).set({
+  salesDB.collection("salesSummary").doc(dateKey).set({
     price: summary[dateKey].price,
     qty: summary[dateKey].qty,
     timestamp: firebase.firestore.FieldValue.serverTimestamp()
   });
-
-  updateTodaySummaryBox();
 }
+
+window.addEventListener("load", () => {
+  showTodaySummary(); // ✅ ใช้ Firebase จริง
+});
 
 
 
@@ -541,40 +556,53 @@ function cleanupOldSummary(summary) {
 }
 
 async function showLastDays(days) {
-  const db = firebase.firestore();
-  const now = new Date();
-  const pastDate = new Date();
-  pastDate.setDate(now.getDate() - days);
+  const today = new Date();
+  let totalSales = 0;
+  let itemCount = 0;
 
-  try {
-    const snapshot = await db.collection("sales")
-      .where("timestamp", ">=", firebase.firestore.Timestamp.fromDate(pastDate))
-      .where("timestamp", "<=", firebase.firestore.Timestamp.fromDate(now))
-      .get();
+  for (let i = 0; i < days; i++) {
+    const date = new Date();
+    date.setDate(today.getDate() - i);
 
-    const salesData = snapshot.docs.map(doc => doc.data());
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear() + 543;
 
-    const totalSales = salesData.reduce((sum, sale) => sum + sale.total, 0);
-    const itemCount = salesData.reduce((count, sale) => count + sale.items.length, 0);
+    try {
+      const docRef = salesDB
+        .collection("salesSummary")
+        .doc(String(month))
+        .collection(String(day))
+        .doc(String(year));
 
-    const rangeBox = document.getElementById("rangeTotal");
-    rangeBox.textContent = `${itemCount} ชิ้น / ฿${totalSales.toFixed(2)}`;
-    rangeBox.classList.remove("hidden");
-    rangeBox.style.display = "block";
-    rangeBox.offsetHeight;
+      const docSnap = await docRef.get();
 
-    clearTimeout(rangeTimer);
-    rangeTimer = setTimeout(() => {
-      rangeBox.classList.add("hidden");
-      setTimeout(() => {
-        rangeBox.style.display = "none";
-      }, 500);
-    }, 10000);
-  } catch (error) {
-    console.error("เกิดข้อผิดพลาด:", error);
-    alert("ไม่สามารถโหลดข้อมูลย้อนหลังได้");
+      if (docSnap.exists) {
+        const data = docSnap.data();
+        totalSales += data.price || 0;
+        itemCount += data.qty || 0;
+      }
+    } catch (error) {
+      console.warn(`❌ ไม่พบข้อมูลวันที่ ${day}/${month}/${year}`, error);
+    }
   }
+
+  const box = document.getElementById("rangeTotal");
+  box.textContent = `${itemCount} ชิ้น / ฿${totalSales.toLocaleString()}`;
+  box.classList.remove("hidden");
+  box.style.display = "block";
+  box.offsetHeight;
+
+  clearTimeout(rangeTimer);
+  rangeTimer = setTimeout(() => {
+    box.classList.add("hidden");
+    setTimeout(() => {
+      box.style.display = "none";
+    }, 500);
+  }, 10000);
 }
+
+
 
 
 flatpickr("#customRange", {
@@ -640,44 +668,8 @@ function convertToBuddhistYear(fpInstance) {
   }, 5);
 }
 
-
-
-
-
-async function showYesterday() {
-  const db = firebase.firestore();
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  const start = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0);
-  const end = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59);
-
-  try {
-    const snapshot = await db.collection("sales")
-      .where("timestamp", ">=", firebase.firestore.Timestamp.fromDate(start))
-      .where("timestamp", "<=", firebase.firestore.Timestamp.fromDate(end))
-      .get();
-
-    const salesData = snapshot.docs.map(doc => doc.data());
-    const totalSales = salesData.reduce((sum, sale) => sum + sale.total, 0);
-    const itemCount = salesData.reduce((count, sale) => count + sale.items.length, 0);
-
-    const rangeBox = document.getElementById("rangeTotal");
-    rangeBox.textContent = `${itemCount} ชิ้น / ฿${totalSales.toFixed(2)}`;
-    rangeBox.classList.remove("hidden");
-    rangeBox.style.display = "block";
-    rangeBox.offsetHeight;
-
-    clearTimeout(rangeTimer);
-    rangeTimer = setTimeout(() => {
-      rangeBox.classList.add("hidden");
-      setTimeout(() => {
-        rangeBox.style.display = "none";
-      }, 500);
-    }, 10000);
-  } catch (error) {
-    console.error("ดึงข้อมูลเมื่อวานล้มเหลว:", error);
-  }
+function showYesterday() {
+  showLastDays(1);
 }
 
 
@@ -772,17 +764,15 @@ document.getElementById("editProductBtn").addEventListener("click", () => {
 });
 
 function saveSalesToFirestore(salesItems, total, cashReceived, change) {
-  const db = firebase.firestore();
-
   const saleRecord = {
-    timestamp: firebase.firestore.FieldValue.serverTimestamp(), // ✅ ใช้เวลาเซิร์ฟเวอร์
+    timestamp: firebase.firestore.FieldValue.serverTimestamp(), // ✅ เวลาเซิร์ฟเวอร์
     items: salesItems,
     total: total,
     cashReceived: cashReceived,
     change: change
   };
 
-  db.collection("sales").add(saleRecord)
+  salesDB.collection("sales").add(saleRecord)
     .then((docRef) => {
       console.log("✅ บันทึกยอดขายแล้ว:", docRef.id);
     })
@@ -790,6 +780,7 @@ function saveSalesToFirestore(salesItems, total, cashReceived, change) {
       console.error("❌ เกิดข้อผิดพลาดในการบันทึก:", error);
     });
 }
+
 
 
 document.getElementById("cashInput").addEventListener("keydown", function (event) {
@@ -837,43 +828,46 @@ function formatDateThai(date) {
 }
 
 async function showTodaySummary() {
-  const db = firebase.firestore();
-
   const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
-  const end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+  const month = today.getDate();         // 👈 '3' คือเดือน
+  const day = today.getMonth() + 1;      // 👈 '5' คือวันที่
+  const year = today.getFullYear() + 543;
 
   try {
-    const snapshot = await db.collection("sales")
-      .where("timestamp", ">=", firebase.firestore.Timestamp.fromDate(start))
-      .where("timestamp", "<=", firebase.firestore.Timestamp.fromDate(end))
-      .get();
+    const docRef = salesDB
+      .collection("salesSummary")
+      .doc(String(month))           // '3'
+      .collection(String(day))      // '5'
+      .doc(String(year));           // '2568'
 
-    const todaySales = snapshot.docs.map(doc => doc.data());
+    const docSnap = await docRef.get();
 
-    const totalSales = todaySales.reduce((sum, sale) => sum + sale.total, 0);
-    const itemCount = todaySales.reduce((count, sale) => count + sale.items.length, 0);
-
-    // 👉 แสดงผลในหน้าเว็บแทน alert
     const todayTotal = document.getElementById("todayTotal");
-    todayTotal.textContent = `ขายได้ ${itemCount} ชิ้น รวมยอด ฿${totalSales.toLocaleString()}`;
 
+    if (docSnap.exists) {
+      const data = docSnap.data();
+      todayTotal.textContent = `ขายได้ ${data.qty} ชิ้น รวมยอด ฿${data.price.toLocaleString()}`;
+    } else {
+      todayTotal.textContent = "ไม่มีข้อมูลยอดขายวันนี้";
+    }
   } catch (error) {
-    console.error("เกิดข้อผิดพลาดในการดึงยอดขายวันนี้:", error);
+    console.error("เกิดข้อผิดพลาด:", error);
     document.getElementById("todayTotal").textContent = "ไม่สามารถดึงยอดวันนี้ได้";
   }
 }
 
 
-async function showSummary(days) {
-  const db = firebase.firestore();
 
+
+
+
+async function showSummary(days) {
   const now = new Date();
   const pastDate = new Date();
   pastDate.setDate(now.getDate() - days);
 
   try {
-    const snapshot = await db.collection("sales")
+    const snapshot = await salesDB.collection("sales")
       .where("timestamp", ">=", firebase.firestore.Timestamp.fromDate(pastDate))
       .where("timestamp", "<=", firebase.firestore.Timestamp.fromDate(now))
       .get();
@@ -883,7 +877,6 @@ async function showSummary(days) {
     const totalSales = salesData.reduce((sum, sale) => sum + sale.total, 0);
     const itemCount = salesData.reduce((count, sale) => count + sale.items.length, 0);
 
-    // แสดง popup สรุป
     alert(`📊 สรุปยอด ${days === 1 ? "เมื่อวาน" : `${days} วันที่ผ่านมา`}:\n\nจำนวนรายการ: ${itemCount} รายการ\nยอดขายรวม: ${totalSales.toLocaleString()} บาท`);
 
   } catch (error) {
@@ -891,3 +884,4 @@ async function showSummary(days) {
     alert("ไม่สามารถโหลดข้อมูลยอดขายได้");
   }
 }
+
