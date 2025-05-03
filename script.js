@@ -175,25 +175,41 @@ document.getElementById("received").addEventListener("keydown", function (e) {
   if (e.key === "Enter" && !e.repeat) {
     const rows = document.querySelectorAll("#productBody tr");
     if (rows.length === 0) {
-    speak("กรุณาใส่สินค้าก่อน");
-    return; // ❌ ยกเลิกไม่ให้ทำอะไรต่อ
-}
+      speak("กรุณาใส่สินค้าก่อน");
+      return;
+    }
+
     const received = parseFloat(document.getElementById("received").value);
-    const change = received - totalPrice;
+
+    // ✅ คำนวณยอดจริงจาก DOM โดยตรง (ไม่พึ่งตัวแปร global)
+    let tempTotalPrice = 0;
+    let tempTotalQty = 0;
+
+    rows.forEach(row => {
+      const qty = parseInt(row.querySelector("input").value);
+      const price = parseFloat(row.querySelector(".item-row-price").textContent);
+      tempTotalPrice += qty * price;
+      tempTotalQty += qty;
+    });
+
+    const change = received - tempTotalPrice;
 
     const html = generateReceiptHTML();
     showReceiptPopup(html);
     saveReceiptToHistory(html);
-    saveToLocalSummary();
+
+    // ✅ ส่งยอดจริงไปบันทึก
+    saveToLocalSummary(tempTotalPrice, tempTotalQty);
 
     speak(`ขอบคุณค่ะ`);
-    //ทอน ${change} 
     clearAll();
-     setTimeout(() => {
+
+    setTimeout(() => {
       document.getElementById("productCode").focus();
-    }, 3000); // 3000 = 3 วินาที
+    }, 3000);
   }
 });
+
 
 
 
@@ -341,27 +357,25 @@ function clearAll() {
   summaryBox.style.opacity = "1";
 }
 
-function saveToLocalSummary() {
+function saveToLocalSummary(price, qty) {
   const now = new Date();
   const day = now.getDate();
   const month = now.getMonth() + 1;
   const year = now.getFullYear() + 543;
   const dateKey = now.toLocaleDateString("th-TH");
 
-  // 🔹 อัปเดต localStorage
   let summary = JSON.parse(localStorage.getItem("posSummary")) || {};
   summary = cleanupOldSummary(summary);
 
   if (summary[dateKey]) {
-    summary[dateKey].price += totalPrice;
-    summary[dateKey].qty += totalQty;
+    summary[dateKey].price += price;
+    summary[dateKey].qty += qty;
   } else {
-    summary[dateKey] = { price: totalPrice, qty: totalQty };
+    summary[dateKey] = { price, qty };
   }
 
   localStorage.setItem("posSummary", JSON.stringify(summary));
 
-  // 🔹 บันทึกยอดไปยัง Firestore (ใช้ path เดียวกับ showTodaySummary)
   const docRef = salesDB
     .collection("salesSummary")
     .doc(String(day))
@@ -379,16 +393,17 @@ function saveToLocalSummary() {
     }
 
     docRef.set({
-      price: oldPrice + totalPrice,
-      qty: oldQty + totalQty,
+      price: oldPrice + price,
+      qty: oldQty + qty,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
-    console.log("✅ บันทึกยอดรวมสำเร็จ");
+    console.log("✅ บันทึกยอดขายสำเร็จ:", { price, qty });
   }).catch(error => {
-    console.error("❌ เกิดข้อผิดพลาดในการบันทึกยอดรวม:", error);
+    console.error("❌ เกิดข้อผิดพลาดในการบันทึกยอดขาย:", error);
   });
 }
+
 
 
 
