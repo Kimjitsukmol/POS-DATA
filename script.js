@@ -540,118 +540,89 @@ function cleanupOldSummary(summary) {
   return summary;
 }
 
-function showLastDays(days) {
-  const summary = JSON.parse(localStorage.getItem("posSummary")) || {};
+async function showLastDays(days) {
+  const db = firebase.firestore();
   const now = new Date();
-  let totalPrice = 0;
-  let totalQty = 0;
+  const pastDate = new Date();
+  pastDate.setDate(now.getDate() - days);
 
-  Object.keys(summary).forEach(dateKey => {
-    const [d, m, y] = dateKey.split('/');
-    const date = new Date(+y - 543, +m - 1, +d);
-    const diff = (now - date) / (1000 * 60 * 60 * 24);
-    if (diff <= days) {
-      const item = summary[dateKey];
-      if (item && typeof item.price === 'number' && typeof item.qty === 'number') {
-      totalPrice += item.price;
-      totalQty += item.qty;
-      }
-    }
-  });
+  try {
+    const snapshot = await db.collection("sales")
+      .where("timestamp", ">=", firebase.firestore.Timestamp.fromDate(pastDate))
+      .where("timestamp", "<=", firebase.firestore.Timestamp.fromDate(now))
+      .get();
 
-	const rangeBox = document.getElementById("rangeTotal");
-	rangeBox.textContent = `${totalQty} ชิ้น / ฿${totalPrice.toFixed(2)}`;
-	rangeBox.classList.remove("hidden");
-	rangeBox.style.display = "block";
-	rangeBox.offsetHeight; // trigger reflow
+    const salesData = snapshot.docs.map(doc => doc.data());
 
-	clearTimeout(rangeTimer);
-	rangeTimer = setTimeout(() => {
-	  rangeBox.classList.add("hidden");
-	  setTimeout(() => {
-		rangeBox.style.display = "none";
-	  }, 500); // รอ animation จบ
-	}, 10000);
+    const totalSales = salesData.reduce((sum, sale) => sum + sale.total, 0);
+    const itemCount = salesData.reduce((count, sale) => count + sale.items.length, 0);
 
+    const rangeBox = document.getElementById("rangeTotal");
+    rangeBox.textContent = `${itemCount} ชิ้น / ฿${totalSales.toFixed(2)}`;
+    rangeBox.classList.remove("hidden");
+    rangeBox.style.display = "block";
+    rangeBox.offsetHeight;
+
+    clearTimeout(rangeTimer);
+    rangeTimer = setTimeout(() => {
+      rangeBox.classList.add("hidden");
+      setTimeout(() => {
+        rangeBox.style.display = "none";
+      }, 500);
+    }, 10000);
+  } catch (error) {
+    console.error("เกิดข้อผิดพลาด:", error);
+    alert("ไม่สามารถโหลดข้อมูลย้อนหลังได้");
+  }
 }
+
 
 flatpickr("#customRange", {
   mode: "range",
   dateFormat: "d/m/Y",
   locale: "th",
 
-  formatDate: (date, format, locale) => {
-    const d = date.getDate().toString().padStart(2, '0');
-    const m = (date.getMonth() + 1).toString().padStart(2, '0');
-    const y = (date.getFullYear() + 543).toString(); // แปลงเป็น พ.ศ.
-    return `${d}/${m}/${y}`;
-  },
+  onChange: async function (selectedDates) {
+    if (selectedDates.length === 2) {
+      const [startRaw, endRaw] = selectedDates;
 
-  // ✨ ส่วนแสดง พ.ศ. ในปฏิทิน (ยังใช้เหมือนเดิม)
-  onReady: ([selectedDates], dateStr, instance) => {
-    convertToBuddhistYear(instance);
-  },
-  onMonthChange: function(selectedDates, dateStr, instance) {
-    convertToBuddhistYear(instance);
-  },
-  onYearChange: function(selectedDates, dateStr, instance) {
-    convertToBuddhistYear(instance);
-  },
-  onOpen: function(selectedDates, dateStr, instance) {
-    convertToBuddhistYear(instance);
-  },
+      const start = new Date(startRaw.getFullYear(), startRaw.getMonth(), startRaw.getDate(), 0, 0, 0);
+      const end = new Date(endRaw.getFullYear(), endRaw.getMonth(), endRaw.getDate(), 23, 59, 59);
 
-  // ✅ ฟังก์ชันเดิมของคุณ
-  onChange: function (selectedDates) {
-  if (selectedDates.length === 2) {
-    const summary = JSON.parse(localStorage.getItem("posSummary")) || {};
-    const [startRaw, endRaw] = selectedDates;
+      try {
+        const snapshot = await firebaseDB.collection("sales")
+          .where("timestamp", ">=", firebase.firestore.Timestamp.fromDate(start))
+          .where("timestamp", "<=", firebase.firestore.Timestamp.fromDate(end))
+          .get();
 
-    const normalizeDate = (d) => {
-      const year = d.getFullYear();
-      const realYear = year > 2500 ? year - 543 : year;
-      return new Date(realYear, d.getMonth(), d.getDate());
-    };
+        const salesData = snapshot.docs.map(doc => doc.data());
+        const totalSales = salesData.reduce((sum, sale) => sum + sale.total, 0);
+        const itemCount = salesData.reduce((count, sale) => count + sale.items.length, 0);
 
-    const start = normalizeDate(startRaw);
-    const end = normalizeDate(endRaw);
+        const resultBox = document.getElementById("rangeTotal");
+        resultBox.textContent = (totalSales === 0 && itemCount === 0)
+          ? "ไม่พบข้อมูล"
+          : `${itemCount} ชิ้น / ฿${totalSales.toFixed(2)}`;
+        
+        resultBox.classList.remove("hidden");
+        resultBox.style.display = "block";
+        resultBox.offsetHeight;
 
-    let totalPrice = 0;
-    let totalQty = 0;
-
-    Object.keys(summary).forEach(dateKey => {
-      const [d, m, y] = dateKey.split('/');
-      const current = new Date(+y - 543, +m - 1, +d);
-
-      if (current >= start && current <= end) {
-        const item = summary[dateKey];
-        totalPrice += item.price;
-        totalQty += item.qty;
+        clearTimeout(rangeTimer);
+        rangeTimer = setTimeout(() => {
+          resultBox.classList.add("hidden");
+          setTimeout(() => {
+            resultBox.style.display = "none";
+          }, 500);
+        }, 10000);
+      } catch (error) {
+        console.error("ดึงข้อมูลย้อนหลังล้มเหลว:", error);
+        alert("ไม่สามารถโหลดข้อมูลได้");
       }
-    });
-
-    const resultBox = document.getElementById("rangeTotal");
-    if (totalPrice === 0 && totalQty === 0) {
-      resultBox.textContent = "ไม่พบข้อมูล";
-    } else {
-      resultBox.textContent = `${totalQty} ชิ้น / ${totalPrice.toFixed(2)}฿`;
     }
-
-    resultBox.classList.remove("hidden");
-    resultBox.style.display = "block";
-    resultBox.offsetHeight;
-
-    clearTimeout(rangeTimer);
-    rangeTimer = setTimeout(() => {
-      resultBox.classList.add("hidden");
-      setTimeout(() => {
-        resultBox.style.display = "none";
-      }, 500);
-    }, 10000);
   }
-}
-
 });
+
 
 
 
@@ -673,33 +644,42 @@ function convertToBuddhistYear(fpInstance) {
 
 
 
-function showYesterday() {
-  const summary = JSON.parse(localStorage.getItem("posSummary")) || {};
+async function showYesterday() {
+  const db = firebase.firestore();
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
 
-  const key = yesterday.toLocaleDateString("th-TH");
-  const value = summary[key];
-  const rangeBox = document.getElementById("rangeTotal");
+  const start = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0);
+  const end = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59);
 
-  if (value) {
-    rangeBox.textContent = `${value.qty} ชิ้น / ฿${value.price.toFixed(2)}`;
-  } else {
-    rangeBox.textContent = `ไม่มีข้อมูล`;
+  try {
+    const snapshot = await db.collection("sales")
+      .where("timestamp", ">=", firebase.firestore.Timestamp.fromDate(start))
+      .where("timestamp", "<=", firebase.firestore.Timestamp.fromDate(end))
+      .get();
+
+    const salesData = snapshot.docs.map(doc => doc.data());
+    const totalSales = salesData.reduce((sum, sale) => sum + sale.total, 0);
+    const itemCount = salesData.reduce((count, sale) => count + sale.items.length, 0);
+
+    const rangeBox = document.getElementById("rangeTotal");
+    rangeBox.textContent = `${itemCount} ชิ้น / ฿${totalSales.toFixed(2)}`;
+    rangeBox.classList.remove("hidden");
+    rangeBox.style.display = "block";
+    rangeBox.offsetHeight;
+
+    clearTimeout(rangeTimer);
+    rangeTimer = setTimeout(() => {
+      rangeBox.classList.add("hidden");
+      setTimeout(() => {
+        rangeBox.style.display = "none";
+      }, 500);
+    }, 10000);
+  } catch (error) {
+    console.error("ดึงข้อมูลเมื่อวานล้มเหลว:", error);
   }
-
-  rangeBox.classList.remove("hidden");
-  rangeBox.style.display = "block";
-  rangeBox.offsetHeight;
-
-  clearTimeout(rangeTimer);
-  rangeTimer = setTimeout(() => {
-    rangeBox.classList.add("hidden");
-    setTimeout(() => {
-      rangeBox.style.display = "none";
-    }, 500);
-  }, 10000);
 }
+
 
 function hasProductsInTable() {
   return document.querySelectorAll("#productBody tr").length > 0;
