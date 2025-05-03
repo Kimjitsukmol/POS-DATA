@@ -598,12 +598,12 @@ function cleanupOldSummary(summary) {
   return summary;
 }
 
-async function showLastDays(days) {
+async function showLastDays(days, skipToday = false) {
   const today = new Date();
   let totalSales = 0;
   let itemCount = 0;
 
-  for (let i = 0; i < days; i++) {
+  for (let i = skipToday ? 1 : 0; i < days + (skipToday ? 1 : 0); i++) {
     const date = new Date();
     date.setDate(today.getDate() - i);
 
@@ -614,8 +614,8 @@ async function showLastDays(days) {
     try {
       const docRef = salesDB
         .collection("salesSummary")
-        .doc(String(month))
-        .collection(String(day))
+        .doc(String(day))
+        .collection(String(month))
         .doc(String(year));
 
       const docSnap = await docRef.get();
@@ -644,6 +644,8 @@ async function showLastDays(days) {
     }, 500);
   }, 10000);
 }
+
+
 
 
 
@@ -712,8 +714,9 @@ function convertToBuddhistYear(fpInstance) {
 }
 
 function showYesterday() {
-  showLastDays(1);
+  showLastDays(1, true); // ✅ เริ่มจากเมื่อวานจริง
 }
+
 
 
 function hasProductsInTable() {
@@ -872,19 +875,18 @@ function formatDateThai(date) {
 
 async function showTodaySummary() {
   const today = new Date();
-  const month = today.getDate();         // 👈 '3' คือเดือน
-  const day = today.getMonth() + 1;      // 👈 '5' คือวันที่
-  const year = today.getFullYear() + 543;
+  const day = today.getDate();            // ✅ วันที่
+  const month = today.getMonth() + 1;     // ✅ เดือน
+  const year = today.getFullYear() + 543; // ✅ พ.ศ.
 
   try {
     const docRef = salesDB
       .collection("salesSummary")
-      .doc(String(month))           // '3'
-      .collection(String(day))      // '5'
-      .doc(String(year));           // '2568'
+      .doc(String(day))           // ✅ day
+      .collection(String(month))  // ✅ month
+      .doc(String(year));         // ✅ year
 
     const docSnap = await docRef.get();
-
     const todayTotal = document.getElementById("todayTotal");
 
     if (docSnap.exists) {
@@ -898,6 +900,7 @@ async function showTodaySummary() {
     document.getElementById("todayTotal").textContent = "ไม่สามารถดึงยอดวันนี้ได้";
   }
 }
+
 
 
 
