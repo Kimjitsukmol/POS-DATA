@@ -184,7 +184,8 @@ document.getElementById("received").addEventListener("keydown", function (e) {
     const html = generateReceiptHTML();
     showReceiptPopup(html);
     saveReceiptToHistory(html);
-    saveToLocalSummary();
+    saveToSalesSummary(); // ✅ บวกยอดใหม่เข้า Firestore แบบไม่ลบของเดิม
+
 
     speak(`ขอบคุณค่ะ`);
     //ทอน ${change} 
@@ -341,29 +342,43 @@ function clearAll() {
   summaryBox.style.opacity = "1";
 }
 
-function saveToLocalSummary() {
+async function saveToSalesSummary() {
   const now = new Date();
-  const dateKey = now.toLocaleDateString("th-TH"); // ex. "2/5/2567"
-  let summary = JSON.parse(localStorage.getItem("posSummary")) || {};
+  const day = now.getDate();
+  const month = now.getMonth() + 1;
+  const year = now.getFullYear() + 543;
 
-  summary = cleanupOldSummary(summary);
+  const docRef = salesDB
+    .collection("salesSummary")
+    .doc(String(day))       // ✅ วัน
+    .collection(String(month))  // ✅ เดือน
+    .doc(String(year));     // ✅ ปี
 
-  if (summary[dateKey]) {
-    summary[dateKey].price += totalPrice;
-    summary[dateKey].qty += totalQty;
-  } else {
-    summary[dateKey] = { price: totalPrice, qty: totalQty };
+  try {
+    const docSnap = await docRef.get();
+
+    let oldPrice = 0;
+    let oldQty = 0;
+
+    if (docSnap.exists) {
+      const data = docSnap.data();
+      oldPrice = data.price || 0;
+      oldQty = data.qty || 0;
+    }
+
+    await docRef.set({
+      price: oldPrice + totalPrice,
+      qty: oldQty + totalQty,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    console.log("✅ บันทึกยอดรวมสะสมเรียบร้อย");
+
+  } catch (error) {
+    console.error("❌ บันทึกยอดรวมล้มเหลว:", error);
   }
-
-  localStorage.setItem("posSummary", JSON.stringify(summary));
-
-  // ✅ ✅ ✅ เพิ่มบันทึกขึ้น Firestore ตรงนี้:
-  salesDB.collection("salesSummary").doc(dateKey).set({
-    price: summary[dateKey].price,
-    qty: summary[dateKey].qty,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-  });
 }
+
 
 window.addEventListener("load", () => {
   showTodaySummary(); // ✅ ใช้ Firebase จริง
