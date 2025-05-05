@@ -727,7 +727,7 @@ function closePopup() {
   document.getElementById("newPrice").value = "";
 }
 
-const payload = {
-  method: existing ? "put" : "post",
-  ...
-};
+// const payload = {
+//   method: existing ? "put" : "post",
+//   ...
+// };
