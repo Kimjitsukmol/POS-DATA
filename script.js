@@ -600,35 +600,43 @@ function cleanupOldSummary(summary) {
 
 async function showLastDays(days, skipToday = false) {
   const today = new Date();
-  let totalSales = 0;
-  let itemCount = 0;
+  const fetchPromises = [];
 
-  for (let i = skipToday ? 1 : 0; i < days + (skipToday ? 1 : 0); i++) {
+  for (let i = 0; i < days; i++) {
     const date = new Date();
-    date.setDate(today.getDate() - i);
+    date.setDate(today.getDate() - (skipToday ? i + 1 : i));
 
     const day = date.getDate();
     const month = date.getMonth() + 1;
     const year = date.getFullYear() + 543;
 
-    try {
-      const docRef = salesDB
-        .collection("salesSummary")
-        .doc(String(day))
-        .collection(String(month))
-        .doc(String(year));
+    const docRef = salesDB
+      .collection("salesSummary")
+      .doc(String(day))
+      .collection(String(month))
+      .doc(String(year));
 
-      const docSnap = await docRef.get();
-
-      if (docSnap.exists) {
-        const data = docSnap.data();
-        totalSales += data.price || 0;
-        itemCount += data.qty || 0;
-      }
-    } catch (error) {
-      console.warn(`❌ ไม่พบข้อมูลวันที่ ${day}/${month}/${year}`, error);
-    }
+    fetchPromises.push(
+      docRef.get().then(docSnap => {
+        if (docSnap.exists) {
+          const data = docSnap.data();
+          return {
+            price: data.price || 0,
+            qty: data.qty || 0
+          };
+        } else {
+          return { price: 0, qty: 0 };
+        }
+      }).catch(err => {
+        console.warn(`❌ Error on ${day}/${month}/${year}`, err);
+        return { price: 0, qty: 0 };
+      })
+    );
   }
+
+  const results = await Promise.all(fetchPromises);
+  const totalSales = results.reduce((sum, r) => sum + r.price, 0);
+  const itemCount = results.reduce((sum, r) => sum + r.qty, 0);
 
   const box = document.getElementById("rangeTotal");
   box.textContent = `${itemCount} ชิ้น / ฿${totalSales.toLocaleString()}`;
@@ -644,10 +652,6 @@ async function showLastDays(days, skipToday = false) {
     }, 500);
   }, 10000);
 }
-
-
-
-
 
 
 flatpickr("#customRange", {
