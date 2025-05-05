@@ -8,46 +8,15 @@ let rangeTimer = null;
 let isEnterPressed = false;
 let isBackspacePressed = false;
 
-// ✅ Firebase Config
-const firebaseConfig = {
-  apiKey: "AIzaSyCldZmocT5IHIvOvnV-dOGkVdLs5ycz-3A",
-  authDomain: "pos-data-base.firebaseapp.com",
-  projectId: "pos-data-base",
-  storageBucket: "pos-data-base.firebasestorage.app",
-  messagingSenderId: "360322939495",
-  appId: "1:360322939495:web:823012c8a773efce9d32c2"
-  // measurementId: "G-Y652M5JGC1"
-};
-
-// ✅ เริ่มเชื่อมต่อ Firebase
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-window.firebaseDB = db; // เผื่อใช้งานส่วนอื่น
-
-// ✅ Project B – ยอดขาย
-const salesFirebaseConfig = {
-  apiKey: "AIzaSyA9Ru8KfM7W4K-bA947wuR8Z2nfInac5IE",
-  authDomain: "pos-sales-data-3b435.firebaseapp.com",
-  projectId: "pos-sales-data-3b435",
-  storageBucket: "pos-sales-data-3b435.firebasestorage.app",
-  messagingSenderId: "1038822270145",
-  appId: "1:1038822270145:web:ce02aa0c2f294f6acc6040"
-};
-
-const salesApp = firebase.initializeApp(salesFirebaseConfig, "salesApp");
-const salesDB = salesApp.firestore();
-
-
-let productListReady = false;
-
-db.collection("products").get().then(snapshot => {
-  productList = snapshot.docs.map(doc => doc.data());
-  productListReady = true;
-  console.log("✅ โหลดสินค้าจาก Firestore แล้ว", productList);
-}).catch(error => {
-  console.error("❌ โหลดสินค้าจาก Firestore ล้มเหลว:", error);
-});
-
+fetch("https://script.google.com/macros/s/AKfycbyDWi8GSr4bbR6IrzUwCOhq1YfnlDp5QQ23EekwooRCQ2_4ixyGdY4hMmcgIYhvmxui/exec") // << ใส่ URL ที่คุณได้จาก Google Apps Script
+  .then(response => response.json())
+  .then(data => {
+    productList = data;
+    console.log("✅ โหลดข้อมูลจาก Google Sheets สำเร็จแล้ว", productList);
+  })
+  .catch(error => {
+    console.error("❌ โหลดข้อมูลจาก Google Sheets ล้มเหลว:", error);
+  });
 
   
   function speak(text) {
@@ -175,53 +144,33 @@ document.getElementById("received").addEventListener("keydown", function (e) {
   if (e.key === "Enter" && !e.repeat) {
     const rows = document.querySelectorAll("#productBody tr");
     if (rows.length === 0) {
-      speak("กรุณาใส่สินค้าก่อน");
-      return;
-    }
-
+    speak("กรุณาใส่สินค้าก่อน");
+    return; // ❌ ยกเลิกไม่ให้ทำอะไรต่อ
+}
     const received = parseFloat(document.getElementById("received").value);
-
-    // ✅ คำนวณยอดจริงจาก DOM โดยตรง (ไม่พึ่งตัวแปร global)
-    let tempTotalPrice = 0;
-    let tempTotalQty = 0;
-
-    rows.forEach(row => {
-      const qty = parseInt(row.querySelector("input").value);
-      const price = parseFloat(row.querySelector(".item-row-price").textContent);
-      tempTotalPrice += qty * price;
-      tempTotalQty += qty;
-    });
-
-    const change = received - tempTotalPrice;
+    const change = received - totalPrice;
 
     const html = generateReceiptHTML();
     showReceiptPopup(html);
     saveReceiptToHistory(html);
-
-    // ✅ ส่งยอดจริงไปบันทึก
-    saveToLocalSummary(tempTotalPrice, tempTotalQty);
+    saveToLocalSummary();
 
     speak(`ขอบคุณค่ะ`);
+    //ทอน ${change} 
     clearAll();
-
-    setTimeout(() => {
+     setTimeout(() => {
       document.getElementById("productCode").focus();
-    }, 3000);
+    }, 3000); // 3000 = 3 วินาที
   }
 });
 
 
 
-
-document.getElementById("showTodayBtn").addEventListener("click", async () => {
-  await showTodaySummary(); // ดึงข้อมูลจาก Firestore
+document.getElementById("showTodayBtn").addEventListener("click", () => {
   const box = document.getElementById("todaySummaryBox");
   box.style.display = "block";
-  setTimeout(() => {
-    box.style.display = "none";
-  }, 10000); // แสดง 10 วินาที
+  setTimeout(() => box.style.display = "none", 10000);
 });
-
 
 window.addEventListener("keydown", function (e) {
   if (e.code === "NumpadDecimal") {
@@ -234,18 +183,13 @@ window.addEventListener("keydown", function (e) {
 });
 
 function findProduct() {
-  if (!productListReady) {
-    speak("กำลังโหลดสินค้า กรุณารอสักครู่");
-    return;
-  }
-
   const code = document.getElementById("productCode").value.trim();
   document.getElementById("productCode").value = "";
   let found = false;
-
   for (let i = 0; i < productList.length; i++) {
     if (String(productList[i]["รหัสสินค้า"]) === code) {
       const row = document.createElement("tr");
+
       row.innerHTML = `
         <td>${productList[i]["รหัสสินค้า"]}</td>
         <td>${productList[i]["ชื่อสินค้า"]}</td>
@@ -258,22 +202,23 @@ function findProduct() {
         updateTotals();
         updateRowColors();
       });
-
-      row.classList.add("row-animate");
-      document.getElementById("productBody").insertBefore(row, productBody.firstChild);
-      updateTotals();
-      updateRowColors();
-      speak(`${productList[i]["ราคาขาย"]} บาท`);
-      found = true;
+	 
+		row.classList.add("row-animate"); // 👈 เพิ่มตรงนี้ก่อน insert
+	   const tbody = document.getElementById("productBody");
+	   tbody.insertBefore(row, tbody.firstChild);
+       updateTotals();
+       updateRowColors();
+       const unitPrice = productList[i]["ราคาขาย"];
+       speak(`${unitPrice} บาท`);
+       //ชิ้นที่ ${totalQty}
+       found = true;
       break;
     }
   }
-
   if (!found) {
-    speak("ไม่มี");
+    speak("ไม่มี"); // ✅ กรณีไม่พบ
   }
 }
-
 
 function updateRowColors_DEPRECATED() {
   const rows = document.querySelectorAll("#productBody tr");
@@ -357,62 +302,25 @@ function clearAll() {
   summaryBox.style.opacity = "1";
 }
 
-function saveToLocalSummary(price, qty) {
+function saveToLocalSummary() {
   const now = new Date();
-  const day = now.getDate();
-  const month = now.getMonth() + 1;
-  const year = now.getFullYear() + 543;
   const dateKey = now.toLocaleDateString("th-TH");
-
   let summary = JSON.parse(localStorage.getItem("posSummary")) || {};
+  
+   // ✅ ทำความสะอาดก่อน
   summary = cleanupOldSummary(summary);
 
-  if (summary[dateKey]) {
-    summary[dateKey].price += price;
-    summary[dateKey].qty += qty;
-  } else {
-    summary[dateKey] = { price, qty };
-  }
-
-  localStorage.setItem("posSummary", JSON.stringify(summary));
-
-  const docRef = salesDB
-    .collection("salesSummary")
-    .doc(String(day))
-    .collection(String(month))
-    .doc(String(year));
-
-  docRef.get().then(docSnap => {
-    let oldPrice = 0;
-    let oldQty = 0;
-
-    if (docSnap.exists) {
-      const data = docSnap.data();
-      oldPrice = data.price || 0;
-      oldQty = data.qty || 0;
-    }
-
-    docRef.set({
-      price: oldPrice + price,
-      qty: oldQty + qty,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-
-    console.log("✅ บันทึกยอดขายสำเร็จ:", { price, qty });
-  }).catch(error => {
-    console.error("❌ เกิดข้อผิดพลาดในการบันทึกยอดขาย:", error);
-  });
+ if (summary[dateKey]) {
+  summary[dateKey].price += totalPrice;
+  summary[dateKey].qty += totalQty;
+} else {
+  summary[dateKey] = { price: totalPrice, qty: totalQty };
 }
 
 
-
-
-
-window.addEventListener("load", () => {
-  showTodaySummary(); // ✅ ใช้ Firebase จริง
-});
-
-
+  localStorage.setItem("posSummary", JSON.stringify(summary));
+  updateTodaySummaryBox();
+}
 
 function updateTodaySummaryBox() {
   const dateKey = new Date().toLocaleDateString("th-TH");
@@ -598,108 +506,118 @@ function cleanupOldSummary(summary) {
   return summary;
 }
 
-async function showLastDays(days, skipToday = false) {
-  const today = new Date();
-  const fetchPromises = [];
+function showLastDays(days) {
+  const summary = JSON.parse(localStorage.getItem("posSummary")) || {};
+  const now = new Date();
+  let totalPrice = 0;
+  let totalQty = 0;
 
-  for (let i = 0; i < days; i++) {
-    const date = new Date();
-    date.setDate(today.getDate() - (skipToday ? i + 1 : i));
+  Object.keys(summary).forEach(dateKey => {
+    const [d, m, y] = dateKey.split('/');
+    const date = new Date(+y - 543, +m - 1, +d);
+    const diff = (now - date) / (1000 * 60 * 60 * 24);
+    if (diff <= days) {
+      const item = summary[dateKey];
+      if (item && typeof item.price === 'number' && typeof item.qty === 'number') {
+      totalPrice += item.price;
+      totalQty += item.qty;
+      }
+    }
+  });
 
-    const day = date.getDate();
-    const month = date.getMonth() + 1;
-    const year = date.getFullYear() + 543;
+	const rangeBox = document.getElementById("rangeTotal");
+	rangeBox.textContent = `${totalQty} ชิ้น / ฿${totalPrice.toFixed(2)}`;
+	rangeBox.classList.remove("hidden");
+	rangeBox.style.display = "block";
+	rangeBox.offsetHeight; // trigger reflow
 
-    const docRef = salesDB
-      .collection("salesSummary")
-      .doc(String(day))
-      .collection(String(month))
-      .doc(String(year));
+	clearTimeout(rangeTimer);
+	rangeTimer = setTimeout(() => {
+	  rangeBox.classList.add("hidden");
+	  setTimeout(() => {
+		rangeBox.style.display = "none";
+	  }, 500); // รอ animation จบ
+	}, 10000);
 
-    fetchPromises.push(
-      docRef.get().then(docSnap => {
-        if (docSnap.exists) {
-          const data = docSnap.data();
-          return {
-            price: data.price || 0,
-            qty: data.qty || 0
-          };
-        } else {
-          return { price: 0, qty: 0 };
-        }
-      }).catch(err => {
-        console.warn(`❌ Error on ${day}/${month}/${year}`, err);
-        return { price: 0, qty: 0 };
-      })
-    );
-  }
-
-  const results = await Promise.all(fetchPromises);
-  const totalSales = results.reduce((sum, r) => sum + r.price, 0);
-  const itemCount = results.reduce((sum, r) => sum + r.qty, 0);
-
-  const box = document.getElementById("rangeTotal");
-  box.textContent = `${itemCount} ชิ้น / ฿${totalSales.toLocaleString()}`;
-  box.classList.remove("hidden");
-  box.style.display = "block";
-  box.offsetHeight;
-
-  clearTimeout(rangeTimer);
-  rangeTimer = setTimeout(() => {
-    box.classList.add("hidden");
-    setTimeout(() => {
-      box.style.display = "none";
-    }, 500);
-  }, 10000);
 }
-
 
 flatpickr("#customRange", {
   mode: "range",
   dateFormat: "d/m/Y",
   locale: "th",
 
-  onChange: async function (selectedDates) {
-    if (selectedDates.length === 2) {
-      const [startRaw, endRaw] = selectedDates;
+  formatDate: (date, format, locale) => {
+    const d = date.getDate().toString().padStart(2, '0');
+    const m = (date.getMonth() + 1).toString().padStart(2, '0');
+    const y = (date.getFullYear() + 543).toString(); // แปลงเป็น พ.ศ.
+    return `${d}/${m}/${y}`;
+  },
 
-      const start = new Date(startRaw.getFullYear(), startRaw.getMonth(), startRaw.getDate(), 0, 0, 0);
-      const end = new Date(endRaw.getFullYear(), endRaw.getMonth(), endRaw.getDate(), 23, 59, 59);
+  // ✨ ส่วนแสดง พ.ศ. ในปฏิทิน (ยังใช้เหมือนเดิม)
+  onReady: ([selectedDates], dateStr, instance) => {
+    convertToBuddhistYear(instance);
+  },
+  onMonthChange: function(selectedDates, dateStr, instance) {
+    convertToBuddhistYear(instance);
+  },
+  onYearChange: function(selectedDates, dateStr, instance) {
+    convertToBuddhistYear(instance);
+  },
+  onOpen: function(selectedDates, dateStr, instance) {
+    convertToBuddhistYear(instance);
+  },
 
-      try {
-        const snapshot = await firebaseDB.collection("sales")
-          .where("timestamp", ">=", firebase.firestore.Timestamp.fromDate(start))
-          .where("timestamp", "<=", firebase.firestore.Timestamp.fromDate(end))
-          .get();
+  // ✅ ฟังก์ชันเดิมของคุณ
+  onChange: function (selectedDates) {
+  if (selectedDates.length === 2) {
+    const summary = JSON.parse(localStorage.getItem("posSummary")) || {};
+    const [startRaw, endRaw] = selectedDates;
 
-        const salesData = snapshot.docs.map(doc => doc.data());
-        const totalSales = salesData.reduce((sum, sale) => sum + sale.total, 0);
-        const itemCount = salesData.reduce((count, sale) => count + sale.items.length, 0);
+    const normalizeDate = (d) => {
+      const year = d.getFullYear();
+      const realYear = year > 2500 ? year - 543 : year;
+      return new Date(realYear, d.getMonth(), d.getDate());
+    };
 
-        const resultBox = document.getElementById("rangeTotal");
-        resultBox.textContent = (totalSales === 0 && itemCount === 0)
-          ? "ไม่พบข้อมูล"
-          : `${itemCount} ชิ้น / ฿${totalSales.toFixed(2)}`;
-        
-        resultBox.classList.remove("hidden");
-        resultBox.style.display = "block";
-        resultBox.offsetHeight;
+    const start = normalizeDate(startRaw);
+    const end = normalizeDate(endRaw);
 
-        clearTimeout(rangeTimer);
-        rangeTimer = setTimeout(() => {
-          resultBox.classList.add("hidden");
-          setTimeout(() => {
-            resultBox.style.display = "none";
-          }, 500);
-        }, 10000);
-      } catch (error) {
-        console.error("ดึงข้อมูลย้อนหลังล้มเหลว:", error);
-        alert("ไม่สามารถโหลดข้อมูลได้");
+    let totalPrice = 0;
+    let totalQty = 0;
+
+    Object.keys(summary).forEach(dateKey => {
+      const [d, m, y] = dateKey.split('/');
+      const current = new Date(+y - 543, +m - 1, +d);
+
+      if (current >= start && current <= end) {
+        const item = summary[dateKey];
+        totalPrice += item.price;
+        totalQty += item.qty;
       }
-    }
-  }
-});
+    });
 
+    const resultBox = document.getElementById("rangeTotal");
+    if (totalPrice === 0 && totalQty === 0) {
+      resultBox.textContent = "ไม่พบข้อมูล";
+    } else {
+      resultBox.textContent = `${totalQty} ชิ้น / ${totalPrice.toFixed(2)}฿`;
+    }
+
+    resultBox.classList.remove("hidden");
+    resultBox.style.display = "block";
+    resultBox.offsetHeight;
+
+    clearTimeout(rangeTimer);
+    rangeTimer = setTimeout(() => {
+      resultBox.classList.add("hidden");
+      setTimeout(() => {
+        resultBox.style.display = "none";
+      }, 500);
+    }, 10000);
+  }
+}
+
+});
 
 
 
@@ -717,11 +635,37 @@ function convertToBuddhistYear(fpInstance) {
   }, 5);
 }
 
+
+
+
+
 function showYesterday() {
-  showLastDays(1, true); // ✅ เริ่มจากเมื่อวานจริง
+  const summary = JSON.parse(localStorage.getItem("posSummary")) || {};
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const key = yesterday.toLocaleDateString("th-TH");
+  const value = summary[key];
+  const rangeBox = document.getElementById("rangeTotal");
+
+  if (value) {
+    rangeBox.textContent = `${value.qty} ชิ้น / ฿${value.price.toFixed(2)}`;
+  } else {
+    rangeBox.textContent = `ไม่มีข้อมูล`;
+  }
+
+  rangeBox.classList.remove("hidden");
+  rangeBox.style.display = "block";
+  rangeBox.offsetHeight;
+
+  clearTimeout(rangeTimer);
+  rangeTimer = setTimeout(() => {
+    rangeBox.classList.add("hidden");
+    setTimeout(() => {
+      rangeBox.style.display = "none";
+    }, 500);
+  }, 10000);
 }
-
-
 
 function hasProductsInTable() {
   return document.querySelectorAll("#productBody tr").length > 0;
@@ -739,232 +683,46 @@ document.addEventListener("keydown", function (e) {
   }
 });
 
-document.getElementById("saveProductBtn").addEventListener("click", async () => {
+document.getElementById("saveProductBtn").addEventListener("click", () => {
   const code = document.getElementById("newCode").value.trim();
   const name = document.getElementById("newName").value.trim();
-  const price = parseFloat(document.getElementById("newPrice").value);
+  const price = parseFloat(document.getElementById("newPrice").value.trim());
 
   if (!code || !name || isNaN(price)) {
-    alert("กรุณากรอกข้อมูลให้ครบถ้วน และราคาต้องเป็นตัวเลข");
+    alert("กรุณากรอกข้อมูลให้ครบ");
     return;
   }
 
-  const product = {
+  const existing = productList.find(p => p["รหัสสินค้า"] === code);
+  const payload = {
+    method: existing ? "put" : "post", // ← แจ้งฝั่ง Google ว่าจะทำอะไร
     "รหัสสินค้า": code,
     "ชื่อสินค้า": name,
     "ราคาขาย": price
   };
 
-  try {
-    if (isEditMode) {
-      await firebaseDB.collection("products").doc(editingCode).update({
-        "ชื่อสินค้า": name,
-        "ราคาขาย": price
-      });
-      alert("✅ แก้ไขราคาสินค้าสำเร็จ");
-    } else {
-      await firebaseDB.collection("products").doc(code).set(product);
-      alert("✅ เพิ่มสินค้าเรียบร้อยแล้ว");
-    }
-    
-    alert("✅ เพิ่มสินค้าเรียบร้อยแล้ว");
-    closePopup();
-    isEditMode = false;
-    editingCode = "";
-
-
-    // โหลดสินค้าทั้งหมดใหม่
-    const snapshot = await firebaseDB.collection("products").get();
-    productList = snapshot.docs.map(doc => doc.data());
-  } catch (err) {
-    console.error("❌ เพิ่มสินค้าไม่สำเร็จ", err);
-    alert("❌ เกิดข้อผิดพลาด");
-  }
+  fetch("https://script.google.com/macros/s/AKfycbyDWi8GSr4bbR6IrzUwCOhq1YfnlDp5QQ23EekwooRCQ2_4ixyGdY4hMmcgIYhvmxui/exec", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+    .then(res => res.text())
+    .then(msg => {
+      alert(msg);
+      closePopup();
+      location.reload(); // โหลดสินค้าใหม่จาก Google Sheets
+    })
+    .catch(err => {
+      console.error("❌ ไม่สามารถบันทึกสินค้า:", err);
+      alert("เกิดข้อผิดพลาด");
+    });
 });
+
 
 function closePopup() {
-  document.getElementById("productPopup").style.display = "none";
-}
-
-function openPopup() {
-  document.getElementById("productPopup").style.display = "flex";
-}
-
-let isEditMode = false;
-let editingCode = "";
-
-document.getElementById("editProductBtn").addEventListener("click", () => {
-  const code = prompt("ใส่รหัสสินค้าที่ต้องการแก้ไข:");
-  const product = productList.find(p => String(p["รหัสสินค้า"]) === code);
-
-  if (!product) {
-    alert("❌ ไม่พบสินค้านี้");
-    return;
-  }
-
-  // เตรียมข้อมูลใน popup
-  document.getElementById("newCode").value = product["รหัสสินค้า"];
-  document.getElementById("newName").value = product["ชื่อสินค้า"];
-  document.getElementById("newPrice").value = product["ราคาขาย"];
-
-  // ตั้งค่าโหมด
-  isEditMode = true;
-  editingCode = code;
-  openPopup();
-});
-
-function saveSalesToFirestore(salesItems, total, cashReceived, change) {
-  const saleRecord = {
-    timestamp: firebase.firestore.FieldValue.serverTimestamp(), // ✅ เวลาเซิร์ฟเวอร์
-    items: salesItems,
-    total: total,
-    cashReceived: cashReceived,
-    change: change
-  };
-
-  salesDB.collection("sales").add(saleRecord)
-    .then((docRef) => {
-      console.log("✅ บันทึกยอดขายแล้ว:", docRef.id);
-    })
-    .catch((error) => {
-      console.error("❌ เกิดข้อผิดพลาดในการบันทึก:", error);
-    });
-}
-
-
-
-document.getElementById("cashInput").addEventListener("keydown", function (event) {
-  if (event.key === "Enter") {
-    const cash = parseFloat(this.value);
-    if (isNaN(cash)) {
-      alert("กรุณาใส่จำนวนเงินให้ถูกต้อง");
-      return;
-    }
-
-    const total = calculateTotal(); // สมมุติว่าคุณมีฟังก์ชันรวมยอด
-    const change = cash - total;
-
-    // แสดงเงินทอน (หากมี)
-    document.getElementById("changeDisplay").textContent = `เงินทอน: ${change} บาท`;
-
-    // ดึงรายการในตะกร้า
-    const salesItems = getCartItems(); // ฟังก์ชันนี้คุณต้องมีหรือเขียนเพิ่ม
-
-    // ✅ บันทึกลง Firestore
-    saveSalesToFirestore(salesItems, total, cash, change);
-  }
-});
-
-
-function getCartItems() {
-  const rows = document.querySelectorAll("#saleTable tbody tr");
-  const items = [];
-
-  rows.forEach(row => {
-    const cells = row.querySelectorAll("td");
-    items.push({
-      รหัสสินค้า: cells[0].textContent,
-      ชื่อสินค้า: cells[1].textContent,
-      ราคา: parseFloat(cells[2].textContent)
-    });
-  });
-
-  return items;
-}
-
-function formatDateThai(date) {
-  const options = { year: 'numeric', month: 'long', day: 'numeric' };
-  return date.toLocaleDateString('th-TH', options);
-}
-
-async function showTodaySummary() {
-  const today = new Date();
-  const day = today.getDate();            // ✅ วันที่
-  const month = today.getMonth() + 1;     // ✅ เดือน
-  const year = today.getFullYear() + 543; // ✅ พ.ศ.
-
-  try {
-    const docRef = salesDB
-      .collection("salesSummary")
-      .doc(String(day))           // ✅ day
-      .collection(String(month))  // ✅ month
-      .doc(String(year));         // ✅ year
-
-    const docSnap = await docRef.get();
-    const todayTotal = document.getElementById("todayTotal");
-
-    if (docSnap.exists) {
-      const data = docSnap.data();
-      todayTotal.textContent = `ขายได้ ${data.qty} ชิ้น รวมยอด ฿${data.price.toLocaleString()}`;
-    } else {
-      todayTotal.textContent = "ไม่มีข้อมูลยอดขายวันนี้";
-    }
-  } catch (error) {
-    console.error("เกิดข้อผิดพลาด:", error);
-    document.getElementById("todayTotal").textContent = "ไม่สามารถดึงยอดวันนี้ได้";
-  }
-}
-
-
-
-
-
-
-
-async function showSummary(days) {
-  const now = new Date();
-  const pastDate = new Date();
-  pastDate.setDate(now.getDate() - days);
-
-  try {
-    const snapshot = await salesDB.collection("sales")
-      .where("timestamp", ">=", firebase.firestore.Timestamp.fromDate(pastDate))
-      .where("timestamp", "<=", firebase.firestore.Timestamp.fromDate(now))
-      .get();
-
-    const salesData = snapshot.docs.map(doc => doc.data());
-
-    const totalSales = salesData.reduce((sum, sale) => sum + sale.total, 0);
-    const itemCount = salesData.reduce((count, sale) => count + sale.items.length, 0);
-
-    alert(`📊 สรุปยอด ${days === 1 ? "เมื่อวาน" : `${days} วันที่ผ่านมา`}:\n\nจำนวนรายการ: ${itemCount} รายการ\nยอดขายรวม: ${totalSales.toLocaleString()} บาท`);
-
-  } catch (error) {
-    console.error("เกิดข้อผิดพลาดในการดึงข้อมูลจาก Firestore:", error);
-    alert("ไม่สามารถโหลดข้อมูลยอดขายได้");
-  }
-}
-
-function saveToSalesSummary(totalPrice, totalQty) {
-  const now = new Date();
-  const day = now.getDate();
-  const month = now.getMonth() + 1;
-  const year = now.getFullYear() + 543;
-
-  const docRef = salesDB
-    .collection("salesSummary")
-    .doc(String(day))
-    .collection(String(month))
-    .doc(String(year));
-
-  docRef.get().then(docSnap => {
-    let oldPrice = 0;
-    let oldQty = 0;
-
-    if (docSnap.exists) {
-      const data = docSnap.data();
-      oldPrice = data.price || 0;
-      oldQty = data.qty || 0;
-    }
-
-    docRef.set({
-      price: oldPrice + totalPrice,
-      qty: oldQty + totalQty,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-
-    console.log("✅ บันทึกยอดรวมสำเร็จ");
-  }).catch(error => {
-    console.error("❌ เกิดข้อผิดพลาดในการบันทึกยอดรวม:", error);
-  });
+  const popup = document.getElementById("productPopup");
+  popup.style.display = "none";
+  document.getElementById("newCode").value = "";
+  document.getElementById("newName").value = "";
+  document.getElementById("newPrice").value = "";
 }
