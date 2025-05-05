@@ -8,7 +8,7 @@ let rangeTimer = null;
 let isEnterPressed = false;
 let isBackspacePressed = false;
 
-fetch("https://script.google.com/macros/s/AKfycbyDWi8GSr4bbR6IrzUwCOhq1YfnlDp5QQ23EekwooRCQ2_4ixyGdY4hMmcgIYhvmxui/exec") // << ใส่ URL ที่คุณได้จาก Google Apps Script
+fetch("https://script.google.com/macros/s/AKfycbzPfy-tfAqKfHxSlQU57Fa5Re1npQ2LyrLgetz8BtYxymZNkMb5M0XOY22ToQMpb08p/exec") // << ใส่ URL ที่คุณได้จาก Google Apps Script
   .then(response => response.json())
   .then(data => {
     productList = data;
@@ -701,7 +701,7 @@ document.getElementById("saveProductBtn").addEventListener("click", () => {
     "ราคาขาย": price
   };
 
-  fetch("https://script.google.com/macros/s/AKfycbyDWi8GSr4bbR6IrzUwCOhq1YfnlDp5QQ23EekwooRCQ2_4ixyGdY4hMmcgIYhvmxui/exec", {
+  fetch("https://script.google.com/macros/s/AKfycbzPfy-tfAqKfHxSlQU57Fa5Re1npQ2LyrLgetz8BtYxymZNkMb5M0XOY22ToQMpb08p/exec", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
@@ -726,3 +726,8 @@ function closePopup() {
   document.getElementById("newName").value = "";
   document.getElementById("newPrice").value = "";
 }
+
+const payload = {
+  method: existing ? "put" : "post",
+  ...
+};
