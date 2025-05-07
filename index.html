@@ -23,6 +23,7 @@
       <input type="tel" id="received" placeholder="💰รับเงิน" oninput="calculateChange()">
       <button id="clearAll" onclick="clearAll()">🗑️ลบ</button>
 	  <button id="receiptBtn" onclick="showReceiptHistory()">🧾พิมพ์</button>
+    <a href="https://script.google.com/macros/s/AKfycbyUMyv6rth2IP2mtALMPqhOa83iRiiqS9d_uqXdyN_p6_mhI_9YITRcSpF1b99ZLmMS/exec">➕ ✍️</a>
       </div>
 	  
 	<!-- Popup สำหรับเพิ่มสินค้า -->
@@ -52,7 +53,6 @@
       <tbody id="productBody" class="striped"></tbody>
     </table>
 	<button id="showTodayBtn" style="position: relative; bottom: 0px; left: 0px; z-index: 800;">ยอดวันนี้</button>
-  <button onclick="document.getElementById('productPopup').style.display='flex'">➕</button>
 	<div class="today-summary-box" id="todaySummaryBox">
       <strong>รวมยอด:</strong>
       <div id="todayTotal"></div>

@@ -8,14 +8,14 @@ let rangeTimer = null;
 let isEnterPressed = false;
 let isBackspacePressed = false;
 
-fetch("https://script.google.com/macros/s/AKfycbzPfy-tfAqKfHxSlQU57Fa5Re1npQ2LyrLgetz8BtYxymZNkMb5M0XOY22ToQMpb08p/exec") // << ใส่ URL ที่คุณได้จาก Google Apps Script
+fetch("https://script.google.com/macros/s/AKfycbyUMyv6rth2IP2mtALMPqhOa83iRiiqS9d_uqXdyN_p6_mhI_9YITRcSpF1b99ZLmMS/exec")
   .then(response => response.json())
   .then(data => {
     productList = data;
-    console.log("✅ โหลดข้อมูลจาก Google Sheets สำเร็จแล้ว", productList);
+    console.log("✅ โหลดสินค้าจาก Google Sheets สำเร็จแล้ว", productList);
   })
   .catch(error => {
-    console.error("❌ โหลดข้อมูลจาก Google Sheets ล้มเหลว:", error);
+    console.error("❌ โหลดสินค้าจาก Google Sheets ล้มเหลว:", error);
   });
 
   
@@ -186,6 +186,7 @@ function findProduct() {
   const code = document.getElementById("productCode").value.trim();
   document.getElementById("productCode").value = "";
   let found = false;
+
   for (let i = 0; i < productList.length; i++) {
     if (String(productList[i]["รหัสสินค้า"]) === code) {
       const row = document.createElement("tr");
@@ -202,23 +203,49 @@ function findProduct() {
         updateTotals();
         updateRowColors();
       });
-	 
-		row.classList.add("row-animate"); // 👈 เพิ่มตรงนี้ก่อน insert
-	   const tbody = document.getElementById("productBody");
-	   tbody.insertBefore(row, tbody.firstChild);
-       updateTotals();
-       updateRowColors();
-       const unitPrice = productList[i]["ราคาขาย"];
-       speak(`${unitPrice} บาท`);
-       //ชิ้นที่ ${totalQty}
-       found = true;
+
+      row.classList.add("row-animate");
+      const tbody = document.getElementById("productBody");
+      tbody.insertBefore(row, tbody.firstChild);
+      updateTotals();
+      updateRowColors();
+      speak(`${productList[i]["ราคาขาย"]} บาท`);
+      found = true;
       break;
     }
   }
+
+  // ❌ ถ้าไม่พบในรายการสินค้า
   if (!found) {
-    speak("ไม่มี"); // ✅ กรณีไม่พบ
+    const num = parseFloat(code);
+    if (!isNaN(num) && num > 0 && num <= 10000 && code.length <= 5) {
+      const row = document.createElement("tr");
+
+      row.innerHTML = `
+        <td>${code}</td>
+        <td>พบรายการสินค้า</td>
+        <td><input type='number' value='1' min='1' oninput='updateTotals()' style='width: 23px;'></td>
+        <td class='item-row-price'>${num}</td>
+        <td><button class='delete-btn'>❌</button></td>
+      `;
+      row.querySelector(".delete-btn").addEventListener("click", function () {
+        row.remove();
+        updateTotals();
+        updateRowColors();
+      });
+
+      row.classList.add("row-animate");
+      const tbody = document.getElementById("productBody");
+      tbody.insertBefore(row, tbody.firstChild);
+      updateTotals();
+      updateRowColors();
+      speak(`${num} บาท`);
+    } else {
+      speak("ไม่มี");
+    }
   }
 }
+
 
 function updateRowColors_DEPRECATED() {
   const rows = document.querySelectorAll("#productBody tr");
@@ -683,51 +710,3 @@ document.addEventListener("keydown", function (e) {
   }
 });
 
-document.getElementById("saveProductBtn").addEventListener("click", () => {
-  const code = document.getElementById("newCode").value.trim();
-  const name = document.getElementById("newName").value.trim();
-  const price = parseFloat(document.getElementById("newPrice").value.trim());
-
-  if (!code || !name || isNaN(price)) {
-    alert("กรุณากรอกข้อมูลให้ครบ");
-    return;
-  }
-
-  const existing = productList.find(p => p["รหัสสินค้า"] === code);
-  const payload = {
-    method: existing ? "put" : "post", // ← แจ้งฝั่ง Google ว่าจะทำอะไร
-    "รหัสสินค้า": code,
-    "ชื่อสินค้า": name,
-    "ราคาขาย": price
-  };
-
-  fetch("https://script.google.com/macros/s/AKfycbzPfy-tfAqKfHxSlQU57Fa5Re1npQ2LyrLgetz8BtYxymZNkMb5M0XOY22ToQMpb08p/exec", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  })
-    .then(res => res.text())
-    .then(msg => {
-      alert(msg);
-      closePopup();
-      location.reload(); // โหลดสินค้าใหม่จาก Google Sheets
-    })
-    .catch(err => {
-      console.error("❌ ไม่สามารถบันทึกสินค้า:", err);
-      alert("เกิดข้อผิดพลาด");
-    });
-});
-
-
-function closePopup() {
-  const popup = document.getElementById("productPopup");
-  popup.style.display = "none";
-  document.getElementById("newCode").value = "";
-  document.getElementById("newName").value = "";
-  document.getElementById("newPrice").value = "";
-}
-
-// const payload = {
-//   method: existing ? "put" : "post",
-//   ...
-// };
