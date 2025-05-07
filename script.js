@@ -743,21 +743,13 @@ function saveProductToSheet() {
   const price = parseFloat(document.getElementById("editPrice").value);
 
   if (!code || !name || isNaN(price)) {
-    alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+    alert("❗ กรุณากรอกข้อมูลให้ครบ");
     return;
   }
 
-  fetch("https://script.google.com/macros/s/AKfycbwoK3qwfpO4BXTpSN3jKxL4hXdp1E4YiuN2O-Z2Qa1He-b1k2TAPrxjoVlWDSdXOISH/exec", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      code: code,
-      name: name,
-      price: price
-    })
-  })
+  const url = `https://script.google.com/macros/s/AKfycbwoK3qwfpO4BXTpSN3jKxL4hXdp1E4YiuN2O-Z2Qa1He-b1k2TAPrxjoVlWDSdXOISH/exec?code=${encodeURIComponent(code)}&name=${encodeURIComponent(name)}&price=${price}`;
+
+  fetch(url)
     .then(res => res.text())
     .then(result => {
       if (result === "OK") {
@@ -765,14 +757,13 @@ function saveProductToSheet() {
         document.getElementById("editCode").value = "";
         document.getElementById("editName").value = "";
         document.getElementById("editPrice").value = "";
-        // 👉 อัปเดตสินค้าใหม่ (เลือกใช้ตามระบบคุณ)
-        fetchAndStoreProductList?.(); // ถ้าใช้ localStorage
       } else {
-        alert("❌ เกิดข้อผิดพลาด: " + result);
+        alert("⚠️ เกิดข้อผิดพลาด: " + result);
       }
     })
     .catch(err => {
       console.error("❌ Error:", err);
-      alert("❌ ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
+      alert("❌ ไม่สามารถติดต่อเซิร์ฟเวอร์ได้");
     });
 }
+
