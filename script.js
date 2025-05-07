@@ -747,7 +747,7 @@ function saveProductToSheet() {
     return;
   }
 
-  const url = `https://script.google.com/macros/s/AKfycbwoK3qwfpO4BXTpSN3jKxL4hXdp1E4YiuN2O-Z2Qa1He-b1k2TAPrxjoVlWDSdXOISH/exec?code=${encodeURIComponent(code)}&name=${encodeURIComponent(name)}&price=${price}`;
+  const url = `https://script.google.com/macros/s/AKfycbwoK3qwfpO4BXTpSN3jKxL4hXdp1E4YiuN2O-Z2Qa1He-b1k2TAPrxjoVlWDSdXOISH/exec?action=save&code=${encodeURIComponent(code)}&name=${encodeURIComponent(name)}&price=${price}`;
 
   fetch(url)
     .then(res => res.text())
