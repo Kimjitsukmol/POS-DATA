@@ -8,7 +8,7 @@ let rangeTimer = null;
 let isEnterPressed = false;
 let isBackspacePressed = false;
 
-fetch("https://script.google.com/macros/s/AKfycbzYCVmN-xGX2Wmg-NzKjegf0BKyMixedeJKS09FeJpKAHn7b4dFQczORNrRhgGXBZhr/exec")
+fetch("https://script.google.com/macros/s/AKfycbwoK3qwfpO4BXTpSN3jKxL4hXdp1E4YiuN2O-Z2Qa1He-b1k2TAPrxjoVlWDSdXOISH/exec")
   .then(response => response.json())
   .then(data => {
     productList = data;
@@ -209,21 +209,22 @@ function findProduct() {
       tbody.insertBefore(row, tbody.firstChild);
       updateTotals();
       updateRowColors();
-      speak(`${productList[i]["ราคาขาย"]} บาท`);
+      const unitPrice = productList[i]["ราคาขาย"];
+      speak(`${unitPrice} บาท`);
       found = true;
       break;
     }
   }
 
-  // ❌ ถ้าไม่พบในรายการสินค้า
   if (!found) {
-    const num = parseFloat(code);
-    if (!isNaN(num) && num > 0 && num <= 10000 && code.length <= 5) {
+    // ✅ ถ้า code เป็นตัวเลข 1-10000 ให้สร้างสินค้าอัตโนมัติ
+    const num = parseInt(code);
+    if (!isNaN(num) && num >= 1 && num <= 10000) {
       const row = document.createElement("tr");
 
       row.innerHTML = `
-        <td>${code}</td>
-        <td>พบรายการสินค้า</td>
+        <td>${num}</td>
+        <td>รายการสินค้า</td>
         <td><input type='number' value='1' min='1' oninput='updateTotals()' style='width: 23px;'></td>
         <td class='item-row-price'>${num}</td>
         <td><button class='delete-btn'>❌</button></td>
@@ -710,3 +711,68 @@ document.addEventListener("keydown", function (e) {
   }
 });
 
+window.addEventListener("load", () => {
+  const localData = localStorage.getItem("productList");
+  if (localData) {
+    productList = JSON.parse(localData);
+    console.log("✅ โหลดสินค้าจาก localStorage แล้ว", productList);
+  } else {
+    fetchAndStoreProductList(); // ถ้าไม่มีใน local ให้โหลดจากเน็ต
+  }
+});
+
+// โหลดจาก Google Sheets แล้วเก็บไว้ใน localStorage
+function fetchAndStoreProductList() {
+  fetch("https://script.google.com/macros/s/AKfycbwoK3qwfpO4BXTpSN3jKxL4hXdp1E4YiuN2O-Z2Qa1He-b1k2TAPrxjoVlWDSdXOISH/exec")
+    .then(res => res.json())
+    .then(data => {
+      productList = data;
+      localStorage.setItem("productList", JSON.stringify(data));
+      console.log("✅ โหลดจาก Google Sheets แล้วบันทึกไว้ใน localStorage", productList);
+    })
+    .catch(err => {
+      console.error("❌ โหลดจาก Google Sheets ล้มเหลว", err);
+    });
+}
+
+
+
+function saveProductToSheet() {
+  const code = document.getElementById("editCode").value.trim();
+  const name = document.getElementById("editName").value.trim();
+  const price = parseFloat(document.getElementById("editPrice").value);
+
+  if (!code || !name || isNaN(price)) {
+    alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+    return;
+  }
+
+  fetch("https://script.google.com/macros/s/AKfycbwoK3qwfpO4BXTpSN3jKxL4hXdp1E4YiuN2O-Z2Qa1He-b1k2TAPrxjoVlWDSdXOISH/exec", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      code: code,
+      name: name,
+      price: price
+    })
+  })
+    .then(res => res.text())
+    .then(result => {
+      if (result === "OK") {
+        alert("✅ บันทึกสินค้าเรียบร้อยแล้ว");
+        document.getElementById("editCode").value = "";
+        document.getElementById("editName").value = "";
+        document.getElementById("editPrice").value = "";
+        // 👉 อัปเดตสินค้าใหม่ (เลือกใช้ตามระบบคุณ)
+        fetchAndStoreProductList?.(); // ถ้าใช้ localStorage
+      } else {
+        alert("❌ เกิดข้อผิดพลาด: " + result);
+      }
+    })
+    .catch(err => {
+      console.error("❌ Error:", err);
+      alert("❌ ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
+    });
+}
