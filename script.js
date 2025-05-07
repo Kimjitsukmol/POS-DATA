@@ -8,7 +8,7 @@ let rangeTimer = null;
 let isEnterPressed = false;
 let isBackspacePressed = false;
 
-fetch("https://script.google.com/macros/s/AKfycbx0PYOzwYxNpLZGQUSV8lAAsJe_8Pvwu5wyAe02qrF7-Gg61cXDnggNNRj1aGxKBTXY/exec")
+fetch("https://script.google.com/macros/s/AKfycbzYCVmN-xGX2Wmg-NzKjegf0BKyMixedeJKS09FeJpKAHn7b4dFQczORNrRhgGXBZhr/exec")
   .then(response => response.json())
   .then(data => {
     productList = data;
