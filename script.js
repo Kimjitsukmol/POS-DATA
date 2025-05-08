@@ -663,10 +663,6 @@ function convertToBuddhistYear(fpInstance) {
   }, 5);
 }
 
-
-
-
-
 function showYesterday() {
   const summary = JSON.parse(localStorage.getItem("posSummary")) || {};
   const yesterday = new Date();
@@ -737,33 +733,27 @@ function fetchAndStoreProductList() {
 
 
 
-function saveProductToSheet() {
-  const code = document.getElementById("editCode").value.trim();
-  const name = document.getElementById("editName").value.trim();
-  const price = parseFloat(document.getElementById("editPrice").value);
+const form = document.getElementById('productForm');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = {
+        barcode: document.getElementById('barcode').value,
+        name: document.getElementById('name').value,
+        price: document.getElementById('price').value
+      };
 
-  if (!code || !name || isNaN(price)) {
-    alert("❗ กรุณากรอกข้อมูลให้ครบ");
-    return;
-  }
+      const response = await fetch('https://script.google.com/macros/s/AKfycbwoK3qwfpO4BXTpSN3jKxL4hXdp1E4YiuN2O-Z2Qa1He-b1k2TAPrxjoVlWDSdXOISH/exec', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
 
-  const url = `https://script.google.com/macros/s/AKfycbwoK3qwfpO4BXTpSN3jKxL4hXdp1E4YiuN2O-Z2Qa1He-b1k2TAPrxjoVlWDSdXOISH/exec?action=save&code=${encodeURIComponent(code)}&name=${encodeURIComponent(name)}&price=${price}`;
-
-  fetch(url)
-    .then(res => res.text())
-    .then(result => {
-      if (result === "OK") {
-        alert("✅ บันทึกสินค้าเรียบร้อยแล้ว");
-        document.getElementById("editCode").value = "";
-        document.getElementById("editName").value = "";
-        document.getElementById("editPrice").value = "";
+      if (response.ok) {
+        alert('บันทึกสำเร็จ!');
+        form.reset();
       } else {
-        alert("⚠️ เกิดข้อผิดพลาด: " + result);
+        alert('เกิดข้อผิดพลาด');
       }
-    })
-    .catch(err => {
-      console.error("❌ Error:", err);
-      alert("❌ ไม่สามารถติดต่อเซิร์ฟเวอร์ได้");
     });
-}
-
