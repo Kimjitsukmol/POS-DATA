@@ -757,3 +757,8 @@ const form = document.getElementById('productForm');
         alert('เกิดข้อผิดพลาด');
       }
     });
+    
+    function startScan() {
+  alert("เริ่มสแกนบาร์โค้ด...");
+  // เรียก scanner ที่คุณเตรียมไว้ เช่น html5-qrcode หรือ QuaggaJS
+}
