@@ -19,7 +19,10 @@
       <div class="time"></div>
     </div>
     <div id="controls">
-      <input type="number" id="productCode" placeholder="รหัสสินค้า">
+      <div class="input-scan-wrapper">
+  <input type="number" id="productCode" placeholder="รหัสสินค้า">
+  <button id="scanBtn" onclick="startScan()">📷</button>
+</div>
       <input type="number" id="received" placeholder="💰รับเงิน" oninput="calculateChange()">
       <button id="clearAll" onclick="clearAll()">🗑️ลบ</button>
 	  <button id="receiptBtn" onclick="showReceiptHistory()">🧾พิมพ์</button>
