@@ -762,3 +762,20 @@ const form = document.getElementById('productForm');
   alert("เริ่มสแกนบาร์โค้ด...");
   // เรียก scanner ที่คุณเตรียมไว้ เช่น html5-qrcode หรือ QuaggaJS
 }
+const qrRegion = document.getElementById("reader");
+
+  const scanner = new Html5Qrcode("reader");
+  scanner.start(
+    { facingMode: "environment" },
+    {
+      fps: 10,
+      qrbox: 250
+    },
+    (decodedText) => {
+      console.log("ผลลัพธ์ที่สแกนได้:", decodedText);
+      scanner.stop(); // หยุดเมื่อสแกนได้
+    },
+    (errorMessage) => {
+      // console.log("อ่านไม่ได้:", errorMessage);
+    }
+  );
