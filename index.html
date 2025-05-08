@@ -10,8 +10,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="style.css">
   <script defer src="script.js"></script>
-  <script src="https://unpkg.com/html5-qrcode"></script>
-<div id="reader" style="width: 300px"></div>
 </head>
 
 <body>
@@ -21,10 +19,7 @@
       <div class="time"></div>
     </div>
     <div id="controls">
-      <div class="input-scan-wrapper">
-  <input type="number" id="productCode" placeholder="รหัสสินค้า">
-  <button id="scanBtn" onclick="startScan()">📷</button>
-</div>
+      <input type="number" id="productCode" placeholder="รหัสสินค้า">
       <input type="number" id="received" placeholder="💰รับเงิน" oninput="calculateChange()">
       <button id="clearAll" onclick="clearAll()">🗑️ลบ</button>
 	  <button id="receiptBtn" onclick="showReceiptHistory()">🧾พิมพ์</button>
