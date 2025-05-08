@@ -433,25 +433,4 @@ a {
   text-decoration: none;
 }
 
-.input-scan-wrapper {
-  position: relative;
-  width: 100%;
-  max-width: 300px;
-}
 
-.input-scan-wrapper input {
-  width: 100%;
-  padding-right: 40px; /* ให้มีที่ว่างสำหรับปุ่ม */
-  box-sizing: border-box;
-}
-
-.input-scan-wrapper button {
-  position: absolute;
-  top: 50%;
-  right: 10px;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-}
